@@ -1,6 +1,6 @@
 {
   "name": "prompt-plus",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AI提示词模板管理工具 - 生成符合项目规范的提示词",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
