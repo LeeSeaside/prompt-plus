@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import * as path from 'path';
+import * as fs from 'fs';
 import {
   listTemplates,
   useTemplate,
@@ -10,12 +12,16 @@ import {
   syncRepo,
 } from './commands';
 
+// 读取版本号
+const pkgPath = path.join(__dirname, '..', 'package.json');
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+
 const program = new Command();
 
 program
   .name('prompt-plus')
   .description('AI提示词模板管理工具 - 生成符合项目规范的提示词')
-  .version('1.0.0');
+  .version(pkg.version);
 
 program
   .command('list')
