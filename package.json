@@ -1,0 +1,51 @@
+{
+  "name": "prompt-plus",
+  "version": "1.0.0",
+  "description": "AI提示词模板管理工具 - 生成符合项目规范的提示词",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "prompt-plus": "./dist/cli.js",
+    "pp": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "prompt",
+    "ai",
+    "template",
+    "cursor",
+    "copilot",
+    "chatgpt",
+    "claude",
+    "llm"
+  ],
+  "author": "LeeSeaside",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LeeSeaside/prompt-plus.git"
+  },
+  "homepage": "https://github.com/LeeSeaside/prompt-plus#readme",
+  "bugs": {
+    "url": "https://github.com/LeeSeaside/prompt-plus/issues"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "inquirer": "^9.2.12"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
