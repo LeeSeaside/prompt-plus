@@ -1,2 +1,2 @@
-export { loadTemplatesFromDir } from './templates';
-export type { Template } from './types';
+export { loadSkillsFromDir, copySkill } from './skills';
+export type { Skill, SkillMeta, RepoConfig, PromptPlusConfig } from './types';

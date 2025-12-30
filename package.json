@@ -1,7 +1,7 @@
 {
   "name": "prompt-plus",
-  "version": "1.0.5",
-  "description": "AI提示词模板管理工具 - 生成符合项目规范的提示词",
+  "version": "1.1.0",
+  "description": "AI技能包管理工具 - 基于技能包驱动的 AI 开发工作流",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
