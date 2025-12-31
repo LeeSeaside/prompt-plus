@@ -451,3 +451,138 @@ export async function installedSkills(options?: { output?: string }) {
 
   console.log(chalk.gray(`\n📁 位置: ${skillsDir}\n`));
 }
+
+// 辅助函数：将目录内容复制到内存
+function copyDirToMemory(dir: string): Map<string, Buffer> {
+  const files = new Map<string, Buffer>();
+
+  function readDir(currentDir: string, prefix: string = '') {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+      if (entry.isDirectory()) {
+        readDir(fullPath, relativePath);
+      } else {
+        files.set(relativePath, fs.readFileSync(fullPath));
+      }
+    }
+  }
+
+  readDir(dir);
+  return files;
+}
+
+// 辅助函数：从内存恢复目录
+function restoreDirFromMemory(dir: string, files: Map<string, Buffer>) {
+  for (const [relativePath, content] of files) {
+    const fullPath = path.join(dir, relativePath);
+    const dirPath = path.dirname(fullPath);
+
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+
+    fs.writeFileSync(fullPath, content);
+  }
+}
+
+// 升级技能包（保留 context.md、input/、output/）
+export async function upgradeSkill(skillName?: string, options?: { output?: string }) {
+  const chalk = await getChalk();
+  const inquirer = await getInquirer();
+  const baseDir = options?.output || '.ai-workspace';
+  const localSkillsDir = path.join(process.cwd(), baseDir, 'skills');
+
+  if (!fs.existsSync(localSkillsDir)) {
+    console.log(chalk.yellow('\n⚠️  未找到 AI 工作区'));
+    console.log(chalk.gray('使用 "pp workspace init" 初始化工作区\n'));
+    return;
+  }
+
+  const localSkills = loadSkillsFromDir(localSkillsDir);
+  if (localSkills.length === 0) {
+    console.log(chalk.yellow('\n⚠️  未安装任何技能包\n'));
+    return;
+  }
+
+  // 获取仓库中的技能包
+  const repoSkills = await getAllSkillsWithRepo();
+
+  let skillsToUpgrade: string[] = [];
+
+  if (skillName) {
+    // 指定技能名
+    if (!localSkills.find((s) => s.name === skillName)) {
+      console.log(chalk.red(`\n❌ 未安装技能包: ${skillName}\n`));
+      return;
+    }
+    skillsToUpgrade = [skillName];
+  } else {
+    // 交互式选择
+    const choices = localSkills.map((s) => ({
+      name: s.name,
+      value: s.name,
+      checked: true,
+    }));
+
+    const answer = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'skills',
+        message: '选择要升级的技能包:',
+        choices,
+      },
+    ]);
+
+    skillsToUpgrade = answer.skills;
+  }
+
+  if (skillsToUpgrade.length === 0) {
+    console.log(chalk.yellow('\n⚠️  未选择任何技能包\n'));
+    return;
+  }
+
+  console.log(chalk.cyan('\n🔄 开始升级技能包...\n'));
+
+  for (const name of skillsToUpgrade) {
+    const repoSkill = repoSkills.find((s) => s.name === name);
+    if (!repoSkill) {
+      console.log(chalk.yellow(`  ⚠️  ${name}: 仓库中未找到，跳过`));
+      continue;
+    }
+
+    const localDir = path.join(localSkillsDir, name);
+
+    // 备份需要保留的文件
+    const contextPath = path.join(localDir, 'context.md');
+    const inputDir = path.join(localDir, 'input');
+    const outputDir = path.join(localDir, 'output');
+
+    const contextBackup = fs.existsSync(contextPath) ? fs.readFileSync(contextPath, 'utf-8') : null;
+    const inputBackup = fs.existsSync(inputDir) ? copyDirToMemory(inputDir) : null;
+    const outputBackup = fs.existsSync(outputDir) ? copyDirToMemory(outputDir) : null;
+
+    // 删除旧技能包
+    fs.rmSync(localDir, { recursive: true, force: true });
+
+    // 复制新技能包
+    copySkill(repoSkill.path, localDir);
+
+    // 恢复备份
+    if (contextBackup) {
+      fs.writeFileSync(contextPath, contextBackup, 'utf-8');
+    }
+    if (inputBackup) {
+      restoreDirFromMemory(inputDir, inputBackup);
+    }
+    if (outputBackup) {
+      restoreDirFromMemory(outputDir, outputBackup);
+    }
+
+    console.log(chalk.green(`  ✅ ${name}: 已升级（保留 context.md、input/、output/）`));
+  }
+
+  console.log(chalk.gray('\n升级完成！\n'));
+}

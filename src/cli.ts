@@ -11,6 +11,7 @@ import {
   installSkill,
   initWorkspace,
   installedSkills,
+  upgradeSkill,
 } from './commands';
 
 // 读取版本号
@@ -81,6 +82,14 @@ program
       .description('查看已安装的技能包')
       .option('-o, --output <path>', '工作区路径', '.ai-workspace')
       .action(installedSkills)
+  )
+  .addCommand(
+    new Command('upgrade')
+      .alias('up')
+      .description('升级技能包（保留 context.md、input/、output/）')
+      .argument('[skillName]', '技能包名称（不指定则交互式选择）')
+      .option('-o, --output <path>', '工作区路径', '.ai-workspace')
+      .action(upgradeSkill)
   );
 
 // 工作区管理

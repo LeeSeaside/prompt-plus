@@ -2,7 +2,7 @@
 
 AI 技能包管理工具 - 基于技能包驱动的开发工作流
 
-> ⚠️ **v1.1.0 断档式更新**：不兼容旧版本，请重新安装
+> ⚠️ **v1.1.0+ 断档式更新**：不兼容 v1.0.x，请重新安装
 
 ## 安装
 
@@ -34,29 +34,32 @@ pp skill installed
 ### 仓库管理
 
 ```bash
-pp repo add <name> <url>     # 添加技能包仓库
+pp repo add <name> <url>          # 添加技能包仓库
 pp repo add <name> <url> -b <branch>  # 指定分支
-pp repo remove <name>        # 移除仓库
-pp repo list                 # 列出所有仓库
-pp repo sync                 # 同步所有仓库
-pp repo sync <name>          # 同步指定仓库
+pp repo remove <name>             # 移除仓库
+pp repo list                      # 列出所有仓库
+pp repo sync                      # 同步所有仓库
+pp repo sync <name>               # 同步指定仓库
 ```
 
 ### 技能包管理
 
 ```bash
-pp skill list                # 列出所有可用技能包
-pp skill list -r <repo>      # 列出指定仓库的技能包
-pp skill install             # 交互式安装技能包
-pp skill install <name>      # 安装指定技能包
-pp skill installed           # 查看已安装的技能包
+pp skill list                     # 列出所有可用技能包
+pp skill list -r <repo>           # 列出指定仓库的技能包
+pp skill install                  # 交互式安装技能包
+pp skill install <name>           # 安装指定技能包
+pp skill installed                # 查看已安装的技能包
+pp skill upgrade                  # 升级技能包（保留 context.md）
+pp skill upgrade <name>           # 升级指定技能包
+pp skill up                       # upgrade 简写
 ```
 
 ### 工作区管理
 
 ```bash
-pp workspace init            # 初始化 AI 工作区
-pp ws init                   # 简写
+pp workspace init                 # 初始化 AI 工作区
+pp ws init                        # 简写
 ```
 
 ---
@@ -79,8 +82,6 @@ your-repo/
     │       ├── init.md      # 初始化提示词
     │       └── dev.md       # 开发提示词
     ├── frontend_api/
-    │   ├── manifest.md
-    │   ├── context.md
     │   └── ...
     └── another_skill/
         └── ...
@@ -114,43 +115,6 @@ your-repo/
 - 约束 2
 ```
 
-### context.md 格式
-
-```markdown
-# Project Context Configuration
-
-> ⚠️ 此文件需要初始化
-
-## Tech Stack
-- **Framework**: <!-- 待填充 -->
-- **ORM**: <!-- 待填充 -->
-
-## Directory Mapping
-- **Controller Path**: <!-- 待填充 -->
-- **Service Path**: <!-- 待填充 -->
-
-## Code Style
-- **Naming Convention**: <!-- 待填充 -->
-```
-
-### tools/init.md 格式
-
-```markdown
-# 技能名 - 初始化提示词
-
-## 使用方法
-复制以下内容发送给 AI
-
----
-
-\`\`\`
-请执行 xxx 技能初始化：
-1. 扫描项目结构
-2. 识别技术栈
-3. 将结果写入 context.md
-\`\`\`
-```
-
 ---
 
 ## 安装后的项目结构
@@ -158,7 +122,7 @@ your-repo/
 ```
 your-project/
 ├── .ai-workspace/
-│   ├── RULES.md             # AI 工作流规则
+│   ├── RULES.md             # AI 工作流规则（自动生成）
 │   └── skills/
 │       ├── backend_api/
 │       │   ├── manifest.md
@@ -177,6 +141,29 @@ your-project/
 2. **初始化配置**：查看 `tools/init.md`，复制提示词发送给 AI
 3. **AI 扫描项目**：AI 会分析项目并填充 `context.md`
 4. **开始开发**：将需求文档放入 `input/`，使用 `tools/dev.md` 的提示词
+
+## 技能包升级
+
+当仓库有更新时：
+
+```bash
+pp repo sync              # 同步仓库（不影响已安装的技能包）
+pp skill upgrade          # 升级技能包（保留 context.md、input/、output/）
+```
+
+## 工作流闭环
+
+backend_api 会输出前端对接文档，可直接用于 frontend_api：
+
+```
+backend_api 开发完成
+    ↓
+输出 output/api-spec-[模块].md
+    ↓
+复制到 frontend_api/input/
+    ↓
+frontend_api 生成前端代码
+```
 
 ## License
 
