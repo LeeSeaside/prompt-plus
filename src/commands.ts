@@ -93,7 +93,7 @@ export async function listRepos() {
 
   if (config.repos.length === 0) {
     console.log(chalk.gray('  暂无仓库，请先添加:'));
-    console.log(chalk.gray('  pp repo add official https://github.com/your-repo/skills.git\n'));
+    console.log(chalk.gray('  pp repo add official https://github.com/LeeSeaside/prompt-plus-templates.git\n'));
     return;
   }
 
@@ -488,8 +488,40 @@ function restoreDirFromMemory(dir: string, files: Map<string, Buffer>) {
   }
 }
 
-// 升级技能包（保留 context.md、input/、output/）
-export async function upgradeSkill(skillName?: string, options?: { output?: string }) {
+// 智能合并 context.md：保留用户填充的值，更新模板结构
+function mergeContextMd(localContent: string, repoContent: string): string {
+  // 提取本地已填充的值（非注释、非占位符的内容）
+  const userValues = new Map<string, string>();
+
+  // 匹配 "- **Key**: Value" 或 "- Key: Value" 格式
+  const valuePattern = /^[-*]\s*\*?\*?([^:*]+)\*?\*?:\s*(.+)$/gm;
+  let match;
+
+  while ((match = valuePattern.exec(localContent)) !== null) {
+    const key = match[1].trim();
+    const value = match[2].trim();
+    // 跳过占位符和注释
+    if (value && !value.startsWith('<!--') && !value.includes('待填充') && !value.includes('⚠️')) {
+      userValues.set(key.toLowerCase(), value);
+    }
+  }
+
+  // 在新模板中填充用户值
+  let merged = repoContent;
+  for (const [key, value] of userValues) {
+    // 替换占位符
+    const placeholderPattern = new RegExp(
+      `([-*]\\s*\\*?\\*?${key}\\*?\\*?:\\s*)<!--[^>]*-->`,
+      'gi'
+    );
+    merged = merged.replace(placeholderPattern, `$1${value}`);
+  }
+
+  return merged;
+}
+
+// 升级技能包
+export async function upgradeSkill(skillName?: string, options?: { output?: string; mode?: string }) {
   const chalk = await getChalk();
   const inquirer = await getInquirer();
   const baseDir = options?.output || '.ai-workspace';
@@ -513,14 +545,12 @@ export async function upgradeSkill(skillName?: string, options?: { output?: stri
   let skillsToUpgrade: string[] = [];
 
   if (skillName) {
-    // 指定技能名
     if (!localSkills.find((s) => s.name === skillName)) {
       console.log(chalk.red(`\n❌ 未安装技能包: ${skillName}\n`));
       return;
     }
     skillsToUpgrade = [skillName];
   } else {
-    // 交互式选择
     const choices = localSkills.map((s) => ({
       name: s.name,
       value: s.name,
@@ -544,6 +574,25 @@ export async function upgradeSkill(skillName?: string, options?: { output?: stri
     return;
   }
 
+  // 选择 context.md 处理策略
+  let contextMode = options?.mode;
+  if (!contextMode) {
+    const modeAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'mode',
+        message: 'context.md 处理策略:',
+        choices: [
+          { name: '智能合并 - 保留用户数据，更新模板结构（推荐）', value: 'merge' },
+          { name: '保留本地 - 完全保留本地 context.md', value: 'keep' },
+          { name: '使用仓库 - 使用仓库最新版本（会丢失已填充数据）', value: 'overwrite' },
+        ],
+        default: 'merge',
+      },
+    ]);
+    contextMode = modeAnswer.mode;
+  }
+
   console.log(chalk.cyan('\n🔄 开始升级技能包...\n'));
 
   for (const name of skillsToUpgrade) {
@@ -554,13 +603,12 @@ export async function upgradeSkill(skillName?: string, options?: { output?: stri
     }
 
     const localDir = path.join(localSkillsDir, name);
-
-    // 备份需要保留的文件
     const contextPath = path.join(localDir, 'context.md');
     const inputDir = path.join(localDir, 'input');
     const outputDir = path.join(localDir, 'output');
 
-    const contextBackup = fs.existsSync(contextPath) ? fs.readFileSync(contextPath, 'utf-8') : null;
+    // 备份
+    const localContext = fs.existsSync(contextPath) ? fs.readFileSync(contextPath, 'utf-8') : null;
     const inputBackup = fs.existsSync(inputDir) ? copyDirToMemory(inputDir) : null;
     const outputBackup = fs.existsSync(outputDir) ? copyDirToMemory(outputDir) : null;
 
@@ -570,10 +618,30 @@ export async function upgradeSkill(skillName?: string, options?: { output?: stri
     // 复制新技能包
     copySkill(repoSkill.path, localDir);
 
-    // 恢复备份
-    if (contextBackup) {
-      fs.writeFileSync(contextPath, contextBackup, 'utf-8');
+    // 处理 context.md
+    const repoContextPath = path.join(repoSkill.path, 'context.md');
+    const repoContext = fs.existsSync(repoContextPath) ? fs.readFileSync(repoContextPath, 'utf-8') : null;
+
+    if (localContext && repoContext) {
+      let finalContext: string;
+      switch (contextMode) {
+        case 'keep':
+          finalContext = localContext;
+          break;
+        case 'overwrite':
+          finalContext = repoContext;
+          break;
+        case 'merge':
+        default:
+          finalContext = mergeContextMd(localContext, repoContext);
+          break;
+      }
+      fs.writeFileSync(contextPath, finalContext, 'utf-8');
+    } else if (localContext) {
+      fs.writeFileSync(contextPath, localContext, 'utf-8');
     }
+
+    // 恢复 input 和 output
     if (inputBackup) {
       restoreDirFromMemory(inputDir, inputBackup);
     }
@@ -581,8 +649,14 @@ export async function upgradeSkill(skillName?: string, options?: { output?: stri
       restoreDirFromMemory(outputDir, outputBackup);
     }
 
-    console.log(chalk.green(`  ✅ ${name}: 已升级（保留 context.md、input/、output/）`));
+    const modeLabel = contextMode === 'merge' ? '智能合并' : contextMode === 'keep' ? '保留本地' : '使用仓库';
+    console.log(chalk.green(`  ✅ ${name}: 已升级（context.md: ${modeLabel}）`));
   }
 
   console.log(chalk.gray('\n升级完成！\n'));
+  
+  if (contextMode === 'merge') {
+    console.log(chalk.cyan('💡 提示: 智能合并已尝试保留您的配置数据。'));
+    console.log(chalk.gray('   如果仓库新增了配置项，请检查 context.md 并补充填写。\n'));
+  }
 }

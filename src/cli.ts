@@ -86,9 +86,10 @@ program
   .addCommand(
     new Command('upgrade')
       .alias('up')
-      .description('升级技能包（保留 context.md、input/、output/）')
+      .description('升级技能包（智能合并 context.md）')
       .argument('[skillName]', '技能包名称（不指定则交互式选择）')
       .option('-o, --output <path>', '工作区路径', '.ai-workspace')
+      .option('-m, --mode <mode>', 'context.md 处理策略: merge(智能合并) | keep(保留本地) | overwrite(使用仓库)')
       .action(upgradeSkill)
   );
 

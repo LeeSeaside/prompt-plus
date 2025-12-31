@@ -14,7 +14,7 @@ npm install -g prompt-plus
 
 ```bash
 # 1. 添加技能包仓库
-pp repo add official https://github.com/your-repo/skills.git
+pp repo add official https://github.com/LeeSeaside/prompt-plus-templates.git
 
 # 2. 同步仓库
 pp repo sync
@@ -69,7 +69,7 @@ pp ws init                        # 简写
 如果你想创建自己的技能包仓库，请按以下格式组织：
 
 ```
-your-repo/
+prompt-plus-templates/
 └── skills/
     ├── backend_api/
     │   ├── manifest.md      # 执行流程和规范（必需）
